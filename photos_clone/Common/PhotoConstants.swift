@@ -1,5 +1,5 @@
 //
-//  Constants.swift
+//  PhotosConstants.swift
 //  photos_clone
 //
 //  Created by Aswin Gopinathan on 16/04/24.
