@@ -16,8 +16,9 @@ class PhotosHomeViewController: UIViewController {
     private let initialRowSize: CGFloat = 4
     private let minimumInterItemSpacing: CGFloat = 2
     private var currentPhotoType = PhotosConstants.Categories.nature
-    private var cells = 0
-    private var collectionViewCells: [Int: PhotoCollectionViewCell] = [:]
+    
+    private var photoCollectionViewCellViewModel: PhotoCollectionViewCellViewModel?
+    private var photosHomeViewModel: PhotosHomeViewModel?
     
     //MARK: Lifecycle methods
     override func viewDidLoad() {
@@ -26,6 +27,12 @@ class PhotosHomeViewController: UIViewController {
         setupViewController()
         setupNavigationBar()
         setupCollectionView()
+        
+        photosHomeViewModel = PhotosHomeViewModel()
+        guard let dispatchGroup = photosHomeViewModel?.dispatchGroup else {
+            return
+        }
+        photoCollectionViewCellViewModel = PhotoCollectionViewCellViewModel(dispatchGroup: dispatchGroup)
     }
     
     //MARK: View setup methods
@@ -43,7 +50,7 @@ class PhotosHomeViewController: UIViewController {
                 return
             }
             currentPhotoType = action.title.lowercased()
-            cells = 0
+            photosHomeViewModel?.collectionViewCells = [:]
             photosCollectionView.reloadData()
         }
         
@@ -78,29 +85,6 @@ class PhotosHomeViewController: UIViewController {
             .pinAllSides(to: view,
                          includeSafeArea: true)
     }
-    
-    //MARK: Other methods
-    private func onImagesDownloaded() {
-        DispatchClass.shared.dispatchGroup.notify(queue: .global()) { [weak self] in
-            guard let self else {
-                return
-            }
-            
-            var counter = 1
-            PhotosViewModel.shared.imageData.forEach { [weak self] data in
-                guard let self else {
-                    return
-                }
-                let cell = collectionViewCells[counter]
-                
-                Thread.sleep(forTimeInterval: 0.1)
-                DispatchQueue.main.async {
-                    cell?.setImage(data: data)
-                }
-                counter+=1
-            }
-        }
-    }
 }
 
 extension PhotosHomeViewController: UICollectionViewDataSource, UICollectionViewDelegate {
@@ -109,16 +93,22 @@ extension PhotosHomeViewController: UICollectionViewDataSource, UICollectionView
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        cells+=1
         guard let photoCell = collectionView.dequeueReusableCell(withReuseIdentifier: PhotoCollectionViewCell.identifier, for: indexPath) as? PhotoCollectionViewCell else {
             return UICollectionViewCell()
         }
-        photoCell.setup(with: currentPhotoType)
-        collectionViewCells[cells] = photoCell
-        
-        if cells == 20 {
-            onImagesDownloaded()
+        let uuid = UUID().uuidString
+        photosHomeViewModel?.onImagesDownloaded(photosHomeViewModel: photosHomeViewModel)
+        photoCell.setup(with: currentPhotoType,
+                        uuid: uuid,
+                        photoCollectionViewCellViewModel: photoCollectionViewCellViewModel) { [weak self] uuid, data in
+            guard let self else {
+                return
+            }
+            let photoImageDataModel = PhotoImageDataModel(uuid: uuid, imageData: data)
+            photosHomeViewModel?.photoImageDataModels.append(photoImageDataModel)
         }
+        photosHomeViewModel?.collectionViewCells[uuid] = photoCell
+        photosHomeViewModel?.orderedUUIDs.append(uuid)
         return photoCell
     }
 }

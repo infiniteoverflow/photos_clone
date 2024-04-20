@@ -14,6 +14,10 @@ class PhotoCollectionViewCell: UICollectionViewCell {
     //MARK: Other variables
     static let identifier = String(describing: PhotoCollectionViewCell.self)
     private var keyword = ""
+    private var uuid: String = ""
+
+    private var onImageDataFetched: ((String, Data) -> Void)?
+    private var photoCollectionViewCellViewModel: PhotoCollectionViewCellViewModel?
     
     //MARK: View setup methods
     private func setupImage() {
@@ -28,21 +32,28 @@ class PhotoCollectionViewCell: UICollectionViewCell {
     
     //MARK: Other methods
     private func fetchImage() {
-        PhotosViewModel.shared.getPhoto(for: keyword)
+        photoCollectionViewCellViewModel?.getPhoto(for: keyword,
+                                                   uuid: uuid,
+                                                   onImageDataFetched: onImageDataFetched)
     }
     
     func setImage(data: Data) {
         if let image = UIImage(data: data) {
-            UIView.transition(with: self.image, duration: 2, options: .curveEaseInOut) {
-                self.image.image = image
-            }
+            self.image.image = image
         }
     }
     
-    func setup(with keyword: String) {
+    func setup(with keyword: String, 
+               uuid: String,
+               photoCollectionViewCellViewModel: PhotoCollectionViewCellViewModel?,
+               onImageDataFetched: ((String, Data) -> Void)?) {
         self.keyword = keyword
-        setupImage()
+        self.uuid = uuid
+        self.photoCollectionViewCellViewModel = photoCollectionViewCellViewModel
+        self.onImageDataFetched = onImageDataFetched
         
+        // Setup the imageview with a placeholder
+        setupImage()
         // Fetch the image from network
         fetchImage()
     }

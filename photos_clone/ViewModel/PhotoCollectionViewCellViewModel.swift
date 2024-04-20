@@ -1,5 +1,5 @@
 //
-//  PhotosViewModel.swift
+//  PhotoCollectionViewCellViewModel.swift
 //  photos_clone
 //
 //  Created by Aswin Gopinathan on 16/04/24.
@@ -7,31 +7,28 @@
 
 import Foundation
 
-class PhotosViewModel: NSObject, URLSessionDelegate {
+class PhotoCollectionViewCellViewModel {
+    private var dispatchGroup: DispatchGroup
     
-    private override init() {
-        super.init()
+    init(dispatchGroup: DispatchGroup) {
+        self.dispatchGroup = dispatchGroup
     }
     
-    static let shared = PhotosViewModel()
-    
-    var imageData: [Data] = []
-
-    func getPhoto(for category: String) {
+    func getPhoto(for category: String,
+                  uuid: String,
+                  onImageDataFetched: ((String, Data) -> Void)?) {
         let urlString = "https://api.api-ninjas.com/v1/randomimage?category=\(category)"
         guard let url = URL(string: urlString) else {
             return
         }
         
-        let session = URLSession(configuration: URLSessionConfiguration.ephemeral,
-                                 delegate: self,
-                                 delegateQueue: nil)
+        let session = URLSession.shared
         
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "GET"
         urlRequest.addValue(PhotosConstants.apiKey, forHTTPHeaderField: "X-Api-Key")
         urlRequest.addValue("image/jpg", forHTTPHeaderField: "Accept")
-        DispatchClass.shared.dispatchGroup.enter()
+        dispatchGroup.enter()
         
         let dataTask = session.dataTask(with: urlRequest) { [weak self] data, response, error in
             guard let self else {
@@ -39,13 +36,13 @@ class PhotosViewModel: NSObject, URLSessionDelegate {
             }
             if let error {
                 print("Error : \(error.localizedDescription)")
-                DispatchClass.shared.dispatchGroup.leave()
+                dispatchGroup.leave()
             } else {
                 guard let data else {
                     return
                 }
-                imageData.append(data)
-                DispatchClass.shared.dispatchGroup.leave()
+                onImageDataFetched?(uuid, data)
+                dispatchGroup.leave()
             }
         }
         
